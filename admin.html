@@ -575,6 +575,20 @@
             setTimeout(() => toast.classList.remove('show'), 2500);
         }
 
+        // === Send data to bot ===
+        function sendToBot(data) {
+            try {
+                const json = JSON.stringify(data);
+                if (tg.sendData) {
+                    tg.sendData(json);
+                } else {
+                    tg.showAlert('Loi: Vui long mo webapp tu bot Telegram (lenh /webapp)');
+                }
+            } catch (e) {
+                tg.showAlert('Loi gui du lieu: ' + e.message);
+            }
+        }
+
         // === Submit: Add Product ===
         document.getElementById('btn-add-product').addEventListener('click', () => {
             const name = document.getElementById('p-name').value.trim();
@@ -582,16 +596,16 @@
             const category = document.getElementById('p-category').value.trim();
             const desc = document.getElementById('p-desc').value.trim();
 
-            if (!name) { showToast('Vui long nhap ten san pham'); return; }
-            if (!price || parseInt(price) <= 0) { showToast('Vui long nhap gia hop le'); return; }
+            if (!name) { tg.showAlert('Vui long nhap ten san pham'); return; }
+            if (!price || parseInt(price) <= 0) { tg.showAlert('Vui long nhap gia hop le'); return; }
 
-            tg.sendData(JSON.stringify({
+            sendToBot({
                 action: 'add_product',
                 name: name,
                 price: parseInt(price),
                 category: category,
                 description: desc
-            }));
+            });
         });
 
         // === Submit: Add Stock ===
@@ -599,14 +613,14 @@
             const productName = productSelect.value;
             const keys = keysInput.value.trim();
 
-            if (!productName) { showToast('Vui long chon san pham'); return; }
-            if (!keys) { showToast('Vui long nhap it nhat 1 key'); return; }
+            if (!productName) { tg.showAlert('Vui long chon san pham'); return; }
+            if (!keys) { tg.showAlert('Vui long nhap it nhat 1 key'); return; }
 
-            tg.sendData(JSON.stringify({
+            sendToBot({
                 action: 'add_stock',
                 product_name: productName,
                 keys: keys
-            }));
+            });
         });
 
         // === Edit Product ===
@@ -642,17 +656,17 @@
             const category = document.getElementById('e-category').value.trim();
             const desc = document.getElementById('e-desc').value.trim();
 
-            if (!name) { showToast('Vui long nhap ten san pham'); return; }
-            if (!price || parseInt(price) <= 0) { showToast('Vui long nhap gia hop le'); return; }
+            if (!name) { tg.showAlert('Vui long nhap ten san pham'); return; }
+            if (!price || parseInt(price) <= 0) { tg.showAlert('Vui long nhap gia hop le'); return; }
 
-            tg.sendData(JSON.stringify({
+            sendToBot({
                 action: 'edit_product',
                 id: id,
                 name: name,
                 price: parseInt(price),
                 category: category,
                 description: desc
-            }));
+            });
         });
 
         // === Delete Product ===
@@ -682,11 +696,11 @@
             if (deletingIndex < 0) return;
             const p = products[deletingIndex];
 
-            tg.sendData(JSON.stringify({
+            sendToBot({
                 action: 'delete_product',
                 id: p.id,
                 name: p.name
-            }));
+            });
         });
     </script>
 </body>

@@ -445,7 +445,6 @@
     <div class="modal-overlay" id="edit-modal">
         <div class="modal">
             <div class="modal-title">Sua san pham</div>
-            <input type="hidden" id="e-id">
             <div class="form-group">
                 <div class="form-item">
                     <label>Ten san pham *</label>
@@ -491,16 +490,73 @@
         tg.ready();
         tg.expand();
 
-        // === Parse products from URL params ===
+        // === Fetch products from Google Sheet ===
         const params = new URLSearchParams(window.location.search);
-        const productsParam = params.get('p');
+        const sheetId = params.get('sheet');
         let products = [];
-        try {
-            if (productsParam) {
-                products = JSON.parse(productsParam);
+
+        async function fetchProducts() {
+            if (!sheetId) return;
+            try {
+                const url = 'https://docs.google.com/spreadsheets/d/' + sheetId + '/gviz/tq?tqx=out:csv';
+                const resp = await fetch(url);
+                const text = await resp.text();
+                // Parse CSV
+                const lines = text.split('\n');
+                if (lines.length < 2) return;
+                // Header row
+                const headers = parseCSVLine(lines[0]).map(h => h.toLowerCase().trim());
+                const nameIdx = headers.findIndex(h => h === 'name' || h === 'ten' || h === 'tên');
+                const priceIdx = headers.findIndex(h => h === 'price' || h === 'gia' || h === 'giá');
+                const catIdx = headers.findIndex(h => h === 'category' || h === 'danhmuc' || h === 'danh mục');
+                const descIdx = headers.findIndex(h => h === 'descriptions' || h === 'description' || h === 'mota');
+
+                for (let i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue;
+                    const cols = parseCSVLine(lines[i]);
+                    const name = (cols[nameIdx] || '').trim();
+                    const price = parseInt((cols[priceIdx] || '0').replace(/[^\d]/g, '')) || 0;
+                    const category = (cols[catIdx] || '').trim();
+                    const description = descIdx >= 0 ? (cols[descIdx] || '').trim() : '';
+                    if (name) {
+                        products.push({ id: i, name, price, category, description });
+                    }
+                }
+                populateDropdown();
+                renderProductList();
+            } catch (e) {
+                console.error('Fetch products error:', e);
             }
-        } catch (e) {
-            console.error('Failed to parse products:', e);
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (inQuotes) {
+                    if (ch === '"' && line[i + 1] === '"') {
+                        current += '"';
+                        i++;
+                    } else if (ch === '"') {
+                        inQuotes = false;
+                    } else {
+                        current += ch;
+                    }
+                } else {
+                    if (ch === '"') {
+                        inQuotes = true;
+                    } else if (ch === ',') {
+                        result.push(current);
+                        current = '';
+                    } else {
+                        current += ch;
+                    }
+                }
+            }
+            result.push(current);
+            return result;
         }
 
         // === Tab switching ===
@@ -531,7 +587,7 @@
 
         function renderProductList() {
             if (products.length === 0) {
-                productListDiv.innerHTML = '<div class="empty-state">Chua co san pham nao.</div>';
+                productListDiv.innerHTML = '<div class="empty-state">Dang tai san pham...</div>';
                 return;
             }
 
@@ -556,8 +612,8 @@
             productListDiv.innerHTML = html;
         }
 
-        populateDropdown();
         renderProductList();
+        fetchProducts();
 
         // === Key counter ===
         const keysInput = document.getElementById('s-keys');
@@ -630,7 +686,6 @@
         function openEdit(idx) {
             const p = products[idx];
             editingIndex = idx;
-            document.getElementById('e-id').value = p.id;
             document.getElementById('e-name').value = p.name;
             document.getElementById('e-price').value = p.price || '';
             document.getElementById('e-category').value = p.category || '';
@@ -651,7 +706,6 @@
         });
 
         document.getElementById('btn-edit-save').addEventListener('click', () => {
-            const id = parseInt(document.getElementById('e-id').value);
             const name = document.getElementById('e-name').value.trim();
             const price = document.getElementById('e-price').value.trim();
             const category = document.getElementById('e-category').value.trim();
@@ -660,9 +714,10 @@
             if (!name) { tg.showAlert('Vui long nhap ten san pham'); return; }
             if (!price || parseInt(price) <= 0) { tg.showAlert('Vui long nhap gia hop le'); return; }
 
+            const oldName = products[editingIndex] ? products[editingIndex].name : '';
             sendToBot({
                 action: 'edit_product',
-                id: id,
+                old_name: oldName,
                 name: name,
                 price: parseInt(price),
                 category: category,

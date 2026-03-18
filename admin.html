@@ -577,15 +577,16 @@
 
         // === Send data to bot ===
         function sendToBot(data) {
+            const json = JSON.stringify(data);
+            alert('Data: ' + json + '\n\nsendData available: ' + (typeof tg.sendData) + '\ninitData: ' + tg.initData);
             try {
-                const json = JSON.stringify(data);
-                if (tg.sendData) {
+                if (typeof tg.sendData === 'function') {
                     tg.sendData(json);
                 } else {
-                    tg.showAlert('Loi: Vui long mo webapp tu bot Telegram (lenh /webapp)');
+                    alert('sendData khong kha dung. Ban phai mo webapp tu lenh /webapp trong bot.');
                 }
             } catch (e) {
-                tg.showAlert('Loi gui du lieu: ' + e.message);
+                alert('Loi: ' + e.message);
             }
         }
 
